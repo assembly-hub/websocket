@@ -2,10 +2,9 @@ package singlesub
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
@@ -67,25 +66,22 @@ func (m *Manage) addGroup(groupName string, conn *websocket.Conn, ext *inner.Gro
 	c.Run()
 }
 
-func (m *Manage) sendMsg(groupName string, msg string) {
+func (m *Manage) sendMsg(groupName string, msg string) error {
 	if m.redis == nil {
-		return
+		return fmt.Errorf("redis is nil")
 	}
 
 	r, ctx := m.redis, m.redis.Context()
 	err := r.Publish(ctx, m.pubSubKeyPrefix+groupName, msg).Err()
-	if err != nil {
-		log.Println(err)
-	}
+	return err
 }
 
-func (m *Manage) MsgSub() {
+func (m *Manage) MsgSub() error {
 	r, ctx := m.redis, m.redis.Context()
 	m.pubSub = r.PSubscribe(ctx, m.pubSubKeyPrefix+"*")
 	_, err := m.pubSub.Receive(ctx)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 
 	ch := m.pubSub.Channel()
@@ -97,6 +93,7 @@ func (m *Manage) MsgSub() {
 			group.sendData([]byte(msgStr))
 		}
 	}
+	return nil
 }
 
 func (m *Manage) delGroup(groupName string) {
@@ -124,7 +121,6 @@ func (m *Manage) AddGroupWithExt(groupName string, w http.ResponseWriter, r *htt
 
 	conn, err := m.upgrade.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
@@ -149,29 +145,31 @@ func (m *Manage) SetMaxMsgLength(n int) {
 	m.groupMsgMaxLen = n
 }
 
-func (m *Manage) SetLabel(s string) error {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return fmt.Errorf("label cannot be empty or blank")
-	}
-
-	m.pubSubKeyPrefix = s
-	return nil
-}
-
 func (m *Manage) SetUpgrade(up *websocket.Upgrader) {
 	m.upgrade = up
 }
 
-func NewManager(r *redis.Client) *Manage {
+func NewManager(r *redis.Client, label string) *Manage {
+	if label == "" {
+		label = defaultPubSubKeyPrefix
+	}
+
 	m := &Manage{
 		redis:           r,
 		groupMap:        map[string]*redisGroup{},
-		pubSubKeyPrefix: defaultPubSubKeyPrefix,
+		pubSubKeyPrefix: label,
 		mutex:           sync.Mutex{},
 		groupMsgMaxLen:  1000,
 		upgrade:         &config.WSDefaultUpdate,
 	}
-	go m.MsgSub()
+	go func() {
+		for {
+			err := m.MsgSub()
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
 	return m
 }

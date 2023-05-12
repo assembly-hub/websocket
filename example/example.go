@@ -42,8 +42,9 @@ func SimpleGroupTest() {
 
 // RedisGroupTest Demo
 func RedisGroupTest() {
-	// fmt.Println("Hello, Goutil!")
-	g := multisub.NewManager(rd)
+	// label 每个建议不一样，防止数据干扰
+	g := multisub.NewManager(rd, "my_label")
+	// 设置自定义标签，防止冲突
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		err := g.AddGroup("test", w, r)
 		if err != nil {
@@ -56,7 +57,7 @@ func RedisGroupTest() {
 			time.Sleep(time.Second * 1)
 			err := g.SendMsg("test", "msg")
 			if err != nil {
-				panic(err)
+				fmt.Println(err.Error())
 			}
 		}
 	}()
@@ -64,8 +65,8 @@ func RedisGroupTest() {
 
 // SingleRedisGroupTest Demo
 func SingleRedisGroupTest() {
-	// fmt.Println("Hello, Goutil!")
-	g := singlesub.NewManager(rd)
+	// label 每个建议不一样，防止数据干扰
+	g := singlesub.NewManager(rd, "my_label")
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		err := g.AddGroupWithExt("test", w, r, &websocket.GroupExtData{
 			CloseSendData: "123",
@@ -91,7 +92,6 @@ func SingleRedisGroupTest() {
 
 // SingleWSTest Demo
 func SingleWSTest() {
-	// fmt.Println("Hello, Goutil!")
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		cli, err := websocket.NewWS(w, r, nil)
 		if err != nil {
@@ -123,9 +123,9 @@ func RunExample() {
 	// 本地组
 	// SimpleGroupTest()
 	// 一个组一个redis发布
-	// RedisGroupTest()
-	// 所有组公用一个redis发布
 	SingleRedisGroupTest()
+	// 所有组公用一个redis发布
+	// RedisGroupTest()
 	// 简单的ws链接
 	// SingleWSTest()
 

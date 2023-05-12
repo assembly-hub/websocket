@@ -2,7 +2,6 @@ package simplesub
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
@@ -89,7 +88,6 @@ func (m *Manage) AddGroupWithExt(groupName string, w http.ResponseWriter, r *htt
 
 	conn, err := m.upgrade.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 

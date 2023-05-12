@@ -29,8 +29,8 @@ func (g *redisGroup) sendData(msg []byte) {
 	g.broadcast <- msg
 }
 
-func (g *redisGroup) SendMsg(msg []byte) {
-	g.m.sendMsg(g.groupName, string(msg))
+func (g *redisGroup) SendMsg(msg []byte) error {
+	return g.m.sendMsg(g.groupName, string(msg))
 }
 
 func (g *redisGroup) Run() {

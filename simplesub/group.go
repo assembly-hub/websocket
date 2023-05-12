@@ -24,8 +24,9 @@ type simpleGroup struct {
 	m *Manage
 }
 
-func (g *simpleGroup) SendMsg(msg []byte) {
+func (g *simpleGroup) SendMsg(msg []byte) error {
 	g.broadcast <- msg
+	return nil
 }
 
 func (g *simpleGroup) Run() {

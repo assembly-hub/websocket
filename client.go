@@ -83,7 +83,6 @@ func (c *Client) readData() {
 	c.Conn.SetPongHandler(func(string) error {
 		err := c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 		if err != nil {
-			log.Println(err)
 			return err
 		}
 		return nil
@@ -200,7 +199,6 @@ func NewWS(w http.ResponseWriter, r *http.Request, upgrade *websocket.Upgrader) 
 	}
 	conn, err := upgrade.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 

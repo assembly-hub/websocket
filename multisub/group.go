@@ -4,9 +4,8 @@ package multisub
 import (
 	"fmt"
 	"github.com/assembly-hub/websocket"
-	"log"
-
 	"github.com/go-redis/redis/v8"
+	"time"
 )
 
 // redisGroup maintains the set of active clients and broadcasts messages to the
@@ -30,30 +29,28 @@ type redisGroup struct {
 	m            *Manage
 }
 
-func (g *redisGroup) MsgSub() {
+func (g *redisGroup) MsgSub() error {
 	r, ctx := g.redisCli, g.redisCli.Context()
 	pubSub := r.Subscribe(ctx, fmt.Sprintf("%s%s", g.pubSubPrefix, g.groupName))
 	_, err := pubSub.Receive(ctx)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	ch := pubSub.Channel()
 	for msg := range ch {
 		g.sendData([]byte(msg.Payload))
 	}
+	return nil
 }
 
 func (g *redisGroup) sendData(msg []byte) {
 	g.broadcast <- msg
 }
 
-func (g *redisGroup) SendMsg(msg []byte) {
+func (g *redisGroup) SendMsg(msg []byte) error {
 	r, ctx := g.redisCli, g.redisCli.Context()
 	err := r.Publish(ctx, fmt.Sprintf("%s%s", g.pubSubPrefix, g.groupName), msg).Err()
-	if err != nil {
-		log.Println(err)
-	}
+	return err
 }
 
 func (g *redisGroup) Run() {
@@ -106,8 +103,17 @@ func newRedisGroup(rds *redis.Client, groupName, pubSubPrefix string, m *Manage)
 		redisCli:     rds,
 		groupName:    groupName,
 		pubSubPrefix: pubSubPrefix,
+		m:            m,
 	}
 	go g.Run()
-	go g.MsgSub()
+	go func() {
+		for {
+			err := g.MsgSub()
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
 	return g
 }

@@ -2,9 +2,7 @@ package multisub
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -98,7 +96,6 @@ func (m *Manage) AddGroupWithExt(groupName string, w http.ResponseWriter, r *htt
 
 	conn, err := m.upgrade.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
@@ -123,24 +120,18 @@ func (m *Manage) SetMaxMsgLength(n int) {
 	m.groupMsgMaxLen = n
 }
 
-func (m *Manage) SetLabel(s string) error {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return fmt.Errorf("label cannot be empty or blank")
-	}
-
-	m.pubSubKeyPrefix = s
-	return nil
-}
-
 func (m *Manage) SetUpgrade(up *websocket.Upgrader) {
 	m.upgrade = up
 }
 
-func NewManager(r *redis.Client) *Manage {
+func NewManager(r *redis.Client, label string) *Manage {
+	if label == "" {
+		label = defaultRedisPubSubKeyPrefix
+	}
+
 	m := &Manage{
 		groupMap:        map[string]*redisGroup{},
-		pubSubKeyPrefix: defaultRedisPubSubKeyPrefix,
+		pubSubKeyPrefix: label,
 		r:               r,
 		mutex:           sync.Mutex{},
 		groupMsgMaxLen:  1000,
