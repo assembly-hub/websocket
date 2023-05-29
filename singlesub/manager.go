@@ -137,8 +137,7 @@ func (m *Manage) SendMsg(groupName string, msg string) error {
 		return fmt.Errorf("group name is empty")
 	}
 
-	m.sendMsg(groupName, msg)
-	return nil
+	return m.sendMsg(groupName, msg)
 }
 
 func (m *Manage) SetMaxMsgLength(n int) {

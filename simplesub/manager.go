@@ -1,6 +1,7 @@
 package simplesub
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sync"
@@ -9,6 +10,7 @@ import (
 
 	inner "github.com/assembly-hub/websocket"
 	"github.com/assembly-hub/websocket/config"
+	"github.com/assembly-hub/websocket/log"
 )
 
 type Manage struct {
@@ -60,7 +62,10 @@ func (m *Manage) addGroup(groupName string, conn *websocket.Conn, ext *inner.Gro
 func (m *Manage) sendMsg(groupName string, msg string) {
 	group := m.groupMap[groupName]
 	if group != nil {
-		group.SendMsg([]byte(msg))
+		err := group.SendMsg([]byte(msg))
+		if err != nil {
+			log.Log.Error(context.Background(), err.Error())
+		}
 	}
 }
 

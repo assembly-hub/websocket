@@ -1,13 +1,16 @@
-// Package client
+// Package websocket
 package websocket
 
 import (
-	"github.com/assembly-hub/websocket/config"
-	"log"
+	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/assembly-hub/websocket/config"
+	"github.com/assembly-hub/websocket/log"
 )
 
 const (
@@ -56,13 +59,13 @@ func (c *Client) SetData(data interface{}) {
 func (c *Client) Close() {
 	defer func() {
 		if p := recover(); p != nil {
-			log.Printf("ws err: %v", p)
+			log.Log.Error(context.Background(), fmt.Sprintf("%v", p))
 		}
 	}()
 
 	err := c.Conn.Close()
 	if err != nil {
-		log.Println(err)
+		log.Log.Error(context.Background(), err.Error())
 	}
 }
 
@@ -77,7 +80,7 @@ func (c *Client) readData() {
 	c.Conn.SetReadLimit(maxMessageSize)
 	err := c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 	if err != nil {
-		log.Println(err)
+		log.Log.Error(context.Background(), err.Error())
 		return
 	}
 	c.Conn.SetPongHandler(func(string) error {
@@ -92,7 +95,7 @@ func (c *Client) readData() {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("ws error: %v", err)
+				log.Log.Error(context.Background(), err.Error())
 			}
 			if _, ok := err.(*websocket.CloseError); ok {
 				if c.closeCallback != nil {
@@ -109,7 +112,10 @@ func (c *Client) readData() {
 			}
 		}
 		if c.Group != nil {
-			c.Group.SendMsg(message)
+			err := c.Group.SendMsg(message)
+			if err != nil {
+				log.Log.Error(context.Background(), err.Error())
+			}
 		} else {
 			c.Send <- message
 		}
@@ -126,7 +132,7 @@ func (c *Client) writeData() {
 		ticker.Stop()
 		err := c.Conn.Close()
 		if err != nil {
-			log.Println(err)
+
 		}
 	}()
 	for {
@@ -134,24 +140,25 @@ func (c *Client) writeData() {
 		case message, ok := <-c.Send:
 			err := c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err != nil {
-				log.Println(err)
+				log.Log.Error(context.Background(), err.Error())
 			}
 			if !ok {
 				// The group closed the channel.
 				err = c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				if err != nil {
-					log.Println(err)
+					log.Log.Error(context.Background(), err.Error())
 				}
 				return
 			}
 
 			w, err := c.Conn.NextWriter(websocket.TextMessage)
 			if err != nil {
+				log.Log.Error(context.Background(), err.Error())
 				return
 			}
 			_, err = w.Write(message)
 			if err != nil {
-				log.Println(err)
+				log.Log.Error(context.Background(), err.Error())
 				return
 			}
 
@@ -160,24 +167,25 @@ func (c *Client) writeData() {
 			for i := 0; i < n; i++ {
 				_, err = w.Write(newline)
 				if err != nil {
-					log.Print(err.Error())
+					log.Log.Error(context.Background(), err.Error())
 				}
 				_, err = w.Write(<-c.Send)
 				if err != nil {
-					log.Print(err.Error())
+					log.Log.Error(context.Background(), err.Error())
 				}
 			}
 
 			if err = w.Close(); err != nil {
-				log.Println(err)
+				log.Log.Error(context.Background(), err.Error())
 				return
 			}
 		case <-ticker.C:
 			err := c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err != nil {
-				log.Println(err)
+				log.Log.Error(context.Background(), err.Error())
 			}
 			if err = c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Log.Error(context.Background(), err.Error())
 				return
 			}
 		}

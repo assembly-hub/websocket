@@ -2,10 +2,14 @@
 package multisub
 
 import (
+	"context"
 	"fmt"
-	"github.com/assembly-hub/websocket"
-	"github.com/go-redis/redis/v8"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+
+	"github.com/assembly-hub/websocket"
+	"github.com/assembly-hub/websocket/log"
 )
 
 // redisGroup maintains the set of active clients and broadcasts messages to the
@@ -34,6 +38,7 @@ func (g *redisGroup) MsgSub() error {
 	pubSub := r.Subscribe(ctx, fmt.Sprintf("%s%s", g.pubSubPrefix, g.groupName))
 	_, err := pubSub.Receive(ctx)
 	if err != nil {
+		log.Log.Error(context.Background(), err.Error())
 		return err
 	}
 	ch := pubSub.Channel()

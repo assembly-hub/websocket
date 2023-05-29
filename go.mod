@@ -3,6 +3,7 @@ module github.com/assembly-hub/websocket
 go 1.19
 
 require (
+	github.com/assembly-hub/log v1.2.0
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/gorilla/websocket v1.5.0
 )
